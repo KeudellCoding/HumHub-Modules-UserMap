@@ -50,7 +50,7 @@ class MapController extends Controller {
         }
     }
 
-    private function getCoordinates(string $formatedAddress) {
+    private function getCoordinates($formatedAddress) {
         if (empty($formatedAddress)) {
             return null;
         }
