@@ -24,7 +24,7 @@ use humhub\modules\user\widgets\UserPickerField;
         <hr />
 
         <label class="control-label">Last cached failed request</label>
-        <pre><?= $last_error === false ? 'No failed request detected.' : var_dump($last_error); ?></pre>
+        <pre><?= $last_error === false ? 'No failed request in the cache.' : var_dump($last_error); ?></pre>
 
         <hr />
 
