@@ -38,7 +38,7 @@ MapAssetBundle::register($this);
                     $.each(allUsers, function(i, user){
                         if (user.coords && user.coords.latitude && user.coords.longitude) {
                             var marker = L.marker([user.coords.latitude, user.coords.longitude]);
-                            marker.bindPopup('<a href="'+user.profileurl+'"><b>'+user.firstname+' '+user.lastname+'</b></a><br/>'+user.formatedaddress+'<br/>');
+                            marker.bindPopup('<a href="'+user.profileurl+'"><b>'+user.displayname+'</b></a><br/>'+user.formatedaddress+'<br/>');
                             markers.addLayer(marker);
                         }
                     });

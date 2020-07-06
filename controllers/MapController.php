@@ -27,6 +27,7 @@ class MapController extends Controller {
                 'id' => $user->id,
                 'guid' => $user->guid,
                 'username' => $user->username,
+                'displayname' => $user->displayname,
                 'firstname' => $user->profile->firstname,
                 'lastname' => $user->profile->lastname,
                 'street' => $user->profile->street,
