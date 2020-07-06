@@ -30,4 +30,12 @@ class AdminController extends Controller {
 
         return $this->render('index', ['model' => $form, 'last_error' => $lastError]);
     }
+
+    public function actionUpdate() {
+        exec('git', $gitAvailable);
+        if (!empty($gitAvailable)) {
+            exec('cd '.__DIR__.' && cd .. && git pull origin master');
+        }
+        return $this->redirect(Url::to(['/usermap/admin/index']));
+    }
 }
