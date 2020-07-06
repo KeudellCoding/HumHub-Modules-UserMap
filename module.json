@@ -1,0 +1,13 @@
+{
+    "id": "usermap",
+    "name": "User Location Map",
+    "description": "Show all users on a map.",
+    "keywords": ["map", "user_map", "google maps", "osm", "leaflet"],
+    "version": "1.0.0",
+    "homepage": "https://github.com/KeudellCoding/HumHub-Modules-UserMap",
+    "authors": [
+        {
+            "name": "KeudellCoding"
+        }
+    ]
+}
