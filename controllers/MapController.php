@@ -57,8 +57,12 @@ class MapController extends Controller {
         }
 
         $cacheKey = 'usermap.cache.'.base64_encode($formatedAddress);
+        $errorCacheKey = 'usermap.error.cache.lasterrors';
+
         $coords = Yii::$app->cache->get($cacheKey);
         if ($coords === false) {
+            $coords = null;
+
             $settings = Yii::$app->getModule('usermap')->settings;
             $apiKey = $settings->get('google_geocoding_api_key');
             if (empty($apiKey)) {
@@ -66,18 +70,25 @@ class MapController extends Controller {
             }
 
             $rawGeocodingResponse = file_get_contents('https://maps.googleapis.com/maps/api/geocode/json?address='.urlencode($formatedAddress).'&key='.$apiKey);
-            if(!empty($rawGeocodingResponse)){
+            if (!empty($rawGeocodingResponse)) {
                 $geocodingResponse = json_decode($rawGeocodingResponse, true);
-                if($geocodingResponse['status'] === 'OK' && count($geocodingResponse['results']) >= 1){
-                    $coords = [
-                        'latitude' => $geocodingResponse['results'][0]['geometry']['location']['lat'],
-                        'longitude' => $geocodingResponse['results'][0]['geometry']['location']['lng']
-                    ];
-
-                    Yii::$app->cache->set($cacheKey, $coords, 0);
-
+                if ($geocodingResponse['status'] === 'OK') {
+                    if (count($geocodingResponse['results']) >= 1) {
+                        $coords = [
+                            'latitude' => $geocodingResponse['results'][0]['geometry']['location']['lat'],
+                            'longitude' => $geocodingResponse['results'][0]['geometry']['location']['lng']
+                        ];
+    
+                        Yii::$app->cache->set($cacheKey, $coords, 0);
+                    }
                     return $coords;
                 }
+                else {
+                    Yii::$app->cache->set($errorCacheKey, $geocodingResponse);
+                }
+            }
+            else {
+                Yii::$app->cache->set($errorCacheKey, ['error_message' => 'Result empty']);
             }
         }
         else {

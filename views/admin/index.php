@@ -23,6 +23,11 @@ use humhub\modules\user\widgets\UserPickerField;
 
         <hr />
 
+        <label class="control-label">Last cached failed request</label>
+        <pre><?= $last_error === false ? 'No failed request detected.' : var_dump($last_error); ?></pre>
+
+        <hr />
+
         <?= Html::submitButton("Save", ['class' => 'btn btn-primary', 'data-ui-loader' => '']); ?>
         <a class="btn btn-default" href="<?= Url::to(['/admin/module']); ?>">Back to modules</a>
 
