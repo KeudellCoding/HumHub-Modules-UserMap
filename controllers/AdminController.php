@@ -25,6 +25,9 @@ class AdminController extends Controller {
             return $this->redirect(Url::to(['/usermap/admin/index']));
         }
 
-        return $this->render('index', ['model' => $form]);
+        $errorCacheKey = 'usermap.error.cache.lasterrors';
+        $lastError = Yii::$app->cache->get($errorCacheKey);
+
+        return $this->render('index', ['model' => $form, 'last_error' => $lastError]);
     }
 }
