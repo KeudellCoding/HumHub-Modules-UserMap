@@ -30,7 +30,7 @@ use humhub\modules\user\widgets\UserPickerField;
 
         <?= Html::submitButton("Save", ['class' => 'btn btn-primary', 'data-ui-loader' => '']); ?>
         <a class="btn btn-default" href="<?= Url::to(['/admin/module']); ?>">Back to modules</a>
-        <!--<a class="btn btn-warning" href="<?= ""//Url::to(['/usermap/admin/update']); ?>" data-ui-loader="">Pull module update</a>-->
+        <a class="btn btn-warning" href="<?= Url::to(['/usermap/admin/update']); ?>" data-ui-loader="">Pull module update</a>
 
         <?php ActiveForm::end(); ?>
     </div>
