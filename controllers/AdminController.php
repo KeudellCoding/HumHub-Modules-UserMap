@@ -28,7 +28,12 @@ class AdminController extends Controller {
         $errorCacheKey = 'usermap.error.cache.lasterrors';
         $lastError = Yii::$app->cache->get($errorCacheKey);
 
-        return $this->render('index', ['model' => $form, 'last_error' => $lastError]);
+        $versionInfos = [
+            'local_version' => Yii::$app->getModule('usermap')->version,
+            'github_version' => $this->getGitHubVersion()
+        ];
+
+        return $this->render('index', ['model' => $form, 'last_error' => $lastError, 'version_infos' => $versionInfos]);
     }
 
     public function actionUpdate() {
@@ -37,5 +42,14 @@ class AdminController extends Controller {
             exec('cd '.__DIR__.' && cd .. && git pull origin master');
         }
         return $this->redirect(Url::to(['/usermap/admin/index']));
+    }
+
+    private function getGitHubVersion() {
+        $rawConfigJson = file_get_contents('https://raw.githubusercontent.com/KeudellCoding/HumHub-Modules-UserMap/master/module.json');
+        if (!empty($rawConfigJson)) {
+            $configJson = json_decode($rawConfigJson, true);
+            return $configJson['version'];
+        }
+        return null;
     }
 }
