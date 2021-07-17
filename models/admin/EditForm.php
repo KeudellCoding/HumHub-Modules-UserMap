@@ -12,14 +12,16 @@ use Yii;
 use yii\base\Model;
 
 class EditForm extends Model {
-    public $google_geocoding_api_key;
+    public $geocoding_provider;
+    public $geocoding_api_key;
 
     /**
      * @inheritdocs
      */
     public function rules() {
         return [
-            [['google_geocoding_api_key'], 'required'],
+            [['geocoding_provider'], 'in', 'range' => array_keys(static::getProviders())],
+            [['geocoding_api_key'], 'required'],
         ];
     }
 
@@ -28,7 +30,8 @@ class EditForm extends Model {
      */
     public function init() {
         $settings = Yii::$app->getModule('usermap')->settings;
-        $this->google_geocoding_api_key = $settings->get('google_geocoding_api_key');
+        $this->geocoding_provider = $settings->get('geocoding_provider');
+        $this->geocoding_api_key = $settings->get('geocoding_api_key');
     }
 
     /**
@@ -36,8 +39,17 @@ class EditForm extends Model {
      */
     public function save() {
         $settings = Yii::$app->getModule('usermap')->settings;
-        $settings->set('google_geocoding_api_key', $this->google_geocoding_api_key);
+        $settings->set('geocoding_provider', $this->geocoding_provider);
+        $settings->set('geocoding_api_key', $this->geocoding_api_key);
 
         return true;
+    }
+
+    public static function getProviders() {
+        return [
+            'google' => 'Google',
+            'mapbox' => 'Mapbox',
+            'here' => 'Here.com'
+        ];
     }
 }
