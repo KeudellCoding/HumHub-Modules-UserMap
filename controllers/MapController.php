@@ -43,8 +43,14 @@ class MapController extends Controller {
     }
 
     private function getFormatedAddress(User $user) {
-        if(!empty($user->profile->street) && !empty($user->profile->zip) && !empty($user->profile->city)){
-            return $user->profile->street.', '.$user->profile->zip.' '.$user->profile->city;
+        if (!empty($user->profile->street) && !empty($user->profile->zip) && !empty($user->profile->city)){
+            $result = $user->profile->street.', '.$user->profile->zip.' '.$user->profile->city;
+            
+            if (!empty($user->profile->country)) {
+                $result .= ', '.$user->profile->country;
+            }
+            
+            return $result;
         }
         else {
             return null;
@@ -64,31 +70,93 @@ class MapController extends Controller {
             $coords = null;
 
             $settings = Yii::$app->getModule('usermap')->settings;
-            $apiKey = $settings->get('google_geocoding_api_key');
+
+            $apiProvider = $settings->get('geocoding_provider');
+            if (empty($apiProvider)) {
+                return null;
+            }
+
+            $apiKey = $settings->get('geocoding_api_key');
             if (empty($apiKey)) {
                 return null;
             }
 
-            $rawGeocodingResponse = file_get_contents('https://maps.googleapis.com/maps/api/geocode/json?address='.urlencode($formatedAddress).'&key='.$apiKey);
-            if (!empty($rawGeocodingResponse)) {
-                $geocodingResponse = json_decode($rawGeocodingResponse, true);
-                if ($geocodingResponse['status'] === 'OK') {
-                    if (count($geocodingResponse['results']) >= 1) {
-                        $coords = [
-                            'latitude' => $geocodingResponse['results'][0]['geometry']['location']['lat'],
-                            'longitude' => $geocodingResponse['results'][0]['geometry']['location']['lng']
-                        ];
-    
-                        Yii::$app->cache->set($cacheKey, $coords, 0);
+            switch ($apiProvider) {
+                case 'google':
+                    $rawGeocodingResponse = file_get_contents('https://maps.googleapis.com/maps/api/geocode/json?address='.urlencode($formatedAddress).'&key='.$apiKey);
+                    if (!empty($rawGeocodingResponse)) {
+                        $geocodingResponse = json_decode($rawGeocodingResponse, true);
+                        if ($geocodingResponse['status'] === 'OK') {
+                            if (count($geocodingResponse['results']) >= 1) {
+                                $coords = [
+                                    'latitude' => $geocodingResponse['results'][0]['geometry']['location']['lat'],
+                                    'longitude' => $geocodingResponse['results'][0]['geometry']['location']['lng']
+                                ];
+
+                                Yii::$app->cache->set($cacheKey, $coords, 0);
+                            }
+                            return $coords;
+                        }
+                        else {
+                            Yii::$app->cache->set($errorCacheKey, $geocodingResponse);
+                        }
                     }
-                    return $coords;
-                }
-                else {
-                    Yii::$app->cache->set($errorCacheKey, $geocodingResponse);
-                }
-            }
-            else {
-                Yii::$app->cache->set($errorCacheKey, ['error_message' => 'Result empty']);
+                    else {
+                        Yii::$app->cache->set($errorCacheKey, ['error_message' => 'Result empty']);
+                    }
+                    return null;
+
+                case 'mapbox':
+                    $rawGeocodingResponse = file_get_contents('https://api.mapbox.com/geocoding/v5/mapbox.places/'.urlencode($formatedAddress).'.json?access_token='.$apiKey.'&autocomplete=false&limit=1');
+                    if (!empty($rawGeocodingResponse)) {
+                        $geocodingResponse = json_decode($rawGeocodingResponse, true);
+                        if (isset($geocodingResponse['features'])) {
+                            if (count($geocodingResponse['features']) >= 1) {
+                                $coords = [
+                                    'latitude' => $geocodingResponse['features'][0]['center'][1],
+                                    'longitude' => $geocodingResponse['features'][0]['center'][0]
+                                ];
+
+                                Yii::$app->cache->set($cacheKey, $coords, 0);
+                            }
+                            return $coords;
+                        }
+                        else {
+                            Yii::$app->cache->set($errorCacheKey, $geocodingResponse);
+                        }
+                    }
+                    else {
+                        Yii::$app->cache->set($errorCacheKey, ['error_message' => 'Result empty']);
+                    }
+                    return null;
+
+                case 'here':
+                    $rawGeocodingResponse = file_get_contents('https://geocoder.ls.hereapi.com/6.2/geocode.json?searchtext='.urlencode($formatedAddress).'&apiKey='.$apiKey.'&maxresults=1');
+                    if (!empty($rawGeocodingResponse)) {
+                        $geocodingResponse = json_decode($rawGeocodingResponse, true);
+                        if (isset($geocodingResponse['Response']) && isset($geocodingResponse['Response']['View'])) {
+                            if (count($geocodingResponse['Response']['View']) >= 1) {
+                                $coords = [
+                                    'latitude' => $geocodingResponse['Response']['View'][0]['Result'][0]['Location']['DisplayPosition']['Latitude'],
+                                    'longitude' => $geocodingResponse['Response']['View'][0]['Result'][0]['Location']['DisplayPosition']['Longitude']
+                                ];
+
+                                Yii::$app->cache->set($cacheKey, $coords, 0);
+                            }
+                            return $coords;
+                        }
+                        else {
+                            Yii::$app->cache->set($errorCacheKey, $geocodingResponse);
+                        }
+                    }
+                    else {
+                        Yii::$app->cache->set($errorCacheKey, ['error_message' => 'Result empty']);
+                    }
+                    return null;
+                
+                default:
+                    Yii::$app->cache->set($errorCacheKey, ['error_message' => 'Provider not supported']);
+                    return null;
             }
         }
         else {

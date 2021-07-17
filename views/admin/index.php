@@ -10,6 +10,7 @@ use yii\helpers\Html;
 use yii\helpers\Url;
 use humhub\widgets\ActiveForm;
 use humhub\modules\user\widgets\UserPickerField;
+use humhub\modules\usermap\models\admin\EditForm;
 
 ?>
 
@@ -19,7 +20,8 @@ use humhub\modules\user\widgets\UserPickerField;
 
         <?php $form = ActiveForm::begin(); ?>
 
-        <?= $form->field($model, 'google_geocoding_api_key'); ?>
+        <?= $form->field($model, 'geocoding_provider')->dropDownList(EditForm::getProviders()); ?>
+        <?= $form->field($model, 'geocoding_api_key'); ?>
 
         <hr />
 
@@ -31,7 +33,7 @@ use humhub\modules\user\widgets\UserPickerField;
         <?= Html::submitButton("Save", ['class' => 'btn btn-primary', 'data-ui-loader' => '']); ?>
         <a class="btn btn-default" href="<?= Url::to(['/admin/module']); ?>">Back to modules</a>
         <a class="btn btn-warning" href="<?= Url::to(['/usermap/admin/update']); ?>" data-ui-loader="">Pull module update</a>
-        <a>Current Version: <?= $version_infos['local_version']; ?>, Online Version: <?= $version_infos['github_version']; ?></a>
+        <a>Installed Version: <?= $version_infos['local_version']; ?>, Available Version: <?= $version_infos['github_version']; ?></a>
 
         <?php ActiveForm::end(); ?>
     </div>
