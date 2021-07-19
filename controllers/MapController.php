@@ -110,7 +110,7 @@ class MapController extends Controller {
                         return null;
 
                     case 'mapbox':
-                        $rawGeocodingResponse = file_get_contents('https://api.mapbox.com/geocoding/v5/mapbox.places/'.urlencode($formatedAddress).'.json?access_token='.$apiKey.'&autocomplete=false&limit=1');
+                        $rawGeocodingResponse = file_get_contents('https://api.mapbox.com/geocoding/v5/mapbox.places/'.rawurlencode($formatedAddress).'.json?access_token='.$apiKey.'&autocomplete=false&limit=1');
                         if (!empty($rawGeocodingResponse)) {
                             $geocodingResponse = json_decode($rawGeocodingResponse, true);
                             if (isset($geocodingResponse['features'])) {
