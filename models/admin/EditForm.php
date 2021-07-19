@@ -30,6 +30,14 @@ class EditForm extends Model {
      */
     public function init() {
         $settings = Yii::$app->getModule('usermap')->settings;
+
+        $oldApiKey = $settings->get('google_geocoding_api_key');
+        if ($oldApiKey !== null) {
+            $settings->set('geocoding_provider', 'google');
+            $settings->set('geocoding_api_key', $oldApiKey);
+            $settings->delete('google_geocoding_api_key');
+        }
+
         $this->geocoding_provider = $settings->get('geocoding_provider');
         $this->geocoding_api_key = $settings->get('geocoding_api_key');
     }
