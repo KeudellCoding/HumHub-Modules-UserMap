@@ -9,7 +9,6 @@
 use yii\helpers\Html;
 use yii\helpers\Url;
 use humhub\widgets\ActiveForm;
-use humhub\modules\user\widgets\UserPickerField;
 use humhub\modules\usermap\models\admin\EditForm;
 
 ?>
@@ -17,8 +16,12 @@ use humhub\modules\usermap\models\admin\EditForm;
 <div class="panel panel-default">
     <div class="panel-heading">User Location Map configuration</div>
     <div class="panel-body">
-
         <?php $form = ActiveForm::begin(); ?>
+
+        <?= $form->field($model, 'map_widget_location')->dropDownList(EditForm::getWidgetLocations()); ?>
+        <?= $form->field($model, 'map_widget_location_sort_order')->input('number', ['min' => 0]); ?>
+
+        <hr />
 
         <?= $form->field($model, 'geocoding_provider')->dropDownList(EditForm::getProviders()); ?>
         <?= $form->field($model, 'geocoding_api_key'); ?>
