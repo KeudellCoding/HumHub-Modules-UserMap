@@ -8,7 +8,10 @@ The actual map is displayed with OpenStreetMap, Leaflet and the Leaflet Marker C
 In case of an error the last error is cached and displayed on the admin configuration page.
 
 ## Installation
-- Navigate to the folder "\protected\modules".
-- Execute the command "git clone https://github.com/KeudellCoding/HumHub-Modules-UserMap".
-- If the module does not appear directly in the module list, you can empty the cache.
-- Configure the module.
+This module is finally available in HumHub Marketplace.
+
+If you still have an old version installed, it's best to
+1. remember your settings (they will be reset/deleted during an uninstallation)
+2. uninstall the module,
+3. check that the "HumHub-Modules-UserMap" folder is deleted and
+4. download it again from the Marketplace.

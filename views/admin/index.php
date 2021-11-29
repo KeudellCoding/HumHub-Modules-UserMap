@@ -35,8 +35,11 @@ use humhub\modules\usermap\models\admin\EditForm;
 
         <?= Html::submitButton("Save", ['class' => 'btn btn-primary', 'data-ui-loader' => '']); ?>
         <a class="btn btn-default" href="<?= Url::to(['/admin/module']); ?>">Back to modules</a>
-        <a class="btn btn-warning" href="<?= Url::to(['/usermap/admin/update']); ?>" data-ui-loader="">Pull module update</a>
-        <a>Installed Version: <?= $version_infos['local_version']; ?>, Available Version: <?= $version_infos['github_version']; ?></a>
+        <a>This module is now available in the Marketplace.</a>
+        
+        <hr />
+
+        <span>If you like this plugin, I would be very happy about a <a href="https://ko-fi.com/KeudellCoding" target="_blank" rel="noopener noreferrer">Ko-fi</a> :)</span>
 
         <?php ActiveForm::end(); ?>
     </div>
