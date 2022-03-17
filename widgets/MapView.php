@@ -12,6 +12,7 @@ use Yii;
 use yii\helpers\Url;
 use humhub\components\Widget;
 use humhub\modules\user\models\User;
+use humhub\modules\usermap\models\admin\EditForm;
 
 class MapView extends Widget {
 
@@ -37,13 +38,21 @@ class MapView extends Widget {
     public $link = null;
 
     public function run() {
+        $settings = Yii::$app->getModule('usermap')->settings;
+
         return $this->render(
             'mapView',
             [
                 'height' => $this->height,
                 'user_data' => $this->getAllUsers(),
                 'link' => $this->link,
-                'showAsPanel' => $this->showAsPanel
+                'showAsPanel' => $this->showAsPanel,
+                'osmTileServer' => $settings->get('osm_tile_server', EditForm::DEFAULT_TILE_SERVER),
+                'mapCenter' => [
+                    'latitude' => $settings->get('osm_map_center_latitude', 51.0951),
+                    'longitude' => $settings->get('osm_map_center_longitude', 10.2714),
+                    'zoom' => $settings->get('osm_map_center_zoom', 5)
+                ]
             ]
         );
     }
@@ -202,6 +211,6 @@ class MapView extends Widget {
             Yii::$app->cache->set($errorCacheKey, ['error_message' => $th->getMessage()]);
             return null;
         }
-        
+
     }
 }

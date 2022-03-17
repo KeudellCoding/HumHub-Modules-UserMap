@@ -23,6 +23,22 @@ use humhub\modules\usermap\models\admin\EditForm;
 
         <hr />
 
+        <?= $form->field($model, 'osm_tile_server'); ?>
+
+        <div class="row">
+            <div class="col-md-4">
+                <?= $form->field($model, 'osm_map_center_latitude'); ?>
+            </div>
+            <div class="col-md-4">
+                <?= $form->field($model, 'osm_map_center_longitude'); ?>
+            </div>
+            <div class="col-md-4">
+                <?= $form->field($model, 'osm_map_center_zoom'); ?>
+            </div>
+        </div>
+
+        <hr />
+
         <?= $form->field($model, 'geocoding_provider')->dropDownList(EditForm::getProviders()); ?>
         <?= $form->field($model, 'geocoding_api_key'); ?>
 

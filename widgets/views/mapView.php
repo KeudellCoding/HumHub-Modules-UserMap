@@ -32,10 +32,10 @@ MapAssetBundle::register($this);
 
             <script <?= Html::nonce() ?>>
                 $(document).ready(function(){
-                    var map = L.map('user-main-map').setView([51.0951, 10.2714], 5);
+                    var map = L.map('user-main-map').setView([<?= $mapCenter['latitude'] ?>, <?= $mapCenter['longitude'] ?>], <?= $mapCenter['zoom'] ?>);
                     var markers = L.markerClusterGroup();
                 
-                    L.tileLayer('https://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+                    L.tileLayer('<?= $osmTileServer ?>', {
                         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     }).addTo(map);
                     
