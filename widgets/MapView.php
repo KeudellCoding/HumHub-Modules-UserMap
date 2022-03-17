@@ -58,8 +58,17 @@ class MapView extends Widget {
     }
 
     private function getAllUsers() {
+        /** @var Module $module */
+        $module = Yii::$app->getModule('usermap');
+
         $formatedUsers = [];
         foreach (User::findAll(['status' => User::STATUS_ENABLED]) as $user) {
+            if ($module->showOnMapCallback !== null) {
+                if (call_user_func($module->showOnMapCallback, $user) !== true) {
+                    continue;
+                }
+            }
+
             $formatedAddress = $this->getFormatedAddress($user);
 
             $formatedUsers[] = [
@@ -75,13 +84,19 @@ class MapView extends Widget {
                 'country' => $user->profile->country,
                 'profileurl' => Url::to(['/user/profile', 'cguid' => $user->guid]),
                 'formatedaddress' => $formatedAddress,
-                'coords' => $this->getCoordinates($formatedAddress)
+                'coords' => $this->getCoordinates($user)
             ];
         }
         return $formatedUsers;
     }
 
     private function getFormatedAddress(User $user) {
+        /** @var Module $module */
+        $module = Yii::$app->getModule('usermap');
+        if ($module->getFormatedAddressCallback !== null) {
+            return call_user_func($module->getFormatedAddressCallback, $user);
+        }
+
         if (!empty($user->profile->street) && !empty($user->profile->zip) && !empty($user->profile->city)){
             $result = $user->profile->street.', '.$user->profile->zip.' '.$user->profile->city;
             
@@ -96,7 +111,14 @@ class MapView extends Widget {
         }
     }
 
-    private function getCoordinates($formatedAddress) {
+    private function getCoordinates(User $user) {
+        /** @var Module $module */
+        $module = Yii::$app->getModule('usermap');
+        if ($module->getCoordinatesCallback !== null) {
+            return call_user_func($module->getCoordinatesCallback, $user);
+        }
+
+        $formatedAddress = $this->getFormatedAddress($user);
         if (empty($formatedAddress)) {
             return null;
         }

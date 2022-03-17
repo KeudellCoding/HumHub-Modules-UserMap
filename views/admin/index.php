@@ -55,6 +55,14 @@ use humhub\modules\usermap\models\admin\EditForm;
         
         <hr />
 
+        <span>
+            Additional modifications can be made. HumHub offers the possibility to edit properties and methods of modules.
+            Details can be found <a href="https://docs.humhub.org/docs/admin/advanced-configuration/#module-configurations" target="_blank" rel="noopener noreferrer">here</a>.<br />
+            Details on the possible configurations can be found in the Module.php file.
+        </span>
+
+        <hr />
+
         <span>If you like this plugin, I would be very happy about a <a href="https://ko-fi.com/KeudellCoding" target="_blank" rel="noopener noreferrer">Ko-fi</a> :)</span>
 
         <?php ActiveForm::end(); ?>
