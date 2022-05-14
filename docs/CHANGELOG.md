@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.2.4 (May 13, 2022)
+----------------------
+- Fix #8: Getting unknown property: humhub\modules\usermap\Module
+- Fix #9: Removal of the problems related to the removal of the obsolete "Directory" module (since HumHub 1.11).
+
 1.2.3 (March 17, 2022)
 ----------------------
 - Enh #4, #5, #7: Adding the overridable methods showOnMapCallback, getFormatedAddressCallback and getCoordinatesCallback.

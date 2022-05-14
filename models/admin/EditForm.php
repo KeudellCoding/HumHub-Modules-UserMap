@@ -110,15 +110,9 @@ class EditForm extends Model {
     }
 
     public static function getWidgetLocations() {
-        $result = [
+        return [
             'dashboard_sidebar' => 'Dashboard sidebar',
             'top_menu' => 'Top menu'
         ];
-
-        if (version_compare(Yii::$app->version, '1.9.0', 'lt')) {
-            $result['directory_menu'] = 'Directory menu (Not available as of HumHub version 1.9)';
-        }
-
-        return $result;
     }
 }

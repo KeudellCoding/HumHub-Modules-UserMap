@@ -64,8 +64,12 @@ class MapView extends Widget {
         $formatedUsers = [];
         foreach (User::findAll(['status' => User::STATUS_ENABLED]) as $user) {
             if ($module->showOnMapCallback !== null) {
-                if (call_user_func($module->showOnMapCallback, $user) !== true) {
-                    continue;
+                try {
+                    if (call_user_func($module->showOnMapCallback, $user) !== true) {
+                        continue;
+                    }
+                } catch (\Throwable $e) {
+                    \Yii::error($e);
                 }
             }
 
