@@ -18,24 +18,25 @@ class MapView extends Widget {
 
     /**
      * Height of the Widget (css Values)
-     * 
+     *
      * @var string
      */
     public $height = "20em";
 
     /**
      * Show map as panel
-     * 
+     *
      * @var bool
      */
     public $showAsPanel = false;
 
     /**
      * Link that is navigated to when the map is clicked.
-     * 
+     *
      * @var string
      */
     public $link = null;
+
 
     public function run() {
         $settings = Yii::$app->getModule('usermap')->settings;
@@ -94,24 +95,40 @@ class MapView extends Widget {
         return $formatedUsers;
     }
 
+
     private function getFormatedAddress(User $user) {
         /** @var Module $module */
         $module = Yii::$app->getModule('usermap');
+        $settings = Yii::$app->getModule('usermap')->settings;
+
         if ($module->getFormatedAddressCallback !== null) {
             return call_user_func($module->getFormatedAddressCallback, $user);
         }
+        $geocoding_use_street = $settings->get('geocoding_use_street');
+        if ($geocoding_use_street == true)  {
+            if (!empty($user->profile->street) && !empty($user->profile->zip) && !empty($user->profile->city)) {
+                $result = $user->profile->street . ', ' . $user->profile->zip . ' ' . $user->profile->city;
 
-        if (!empty($user->profile->street) && !empty($user->profile->zip) && !empty($user->profile->city)){
-            $result = $user->profile->street.', '.$user->profile->zip.' '.$user->profile->city;
-            
-            if (!empty($user->profile->country)) {
-                $result .= ', '.$user->profile->country;
+                if (!empty($user->profile->country)) {
+                    $result .= ', ' . $user->profile->country;
+                }
+
+                return $result;
+            } else {
+                return null;
             }
-            
-            return $result;
-        }
-        else {
-            return null;
+        } else {
+            if (!empty($user->profile->zip) && !empty($user->profile->city)) {
+                $result = $user->profile->zip . ' ' . $user->profile->city;
+
+                if (!empty($user->profile->country)) {
+                    $result .= ', ' . $user->profile->country;
+                }
+
+                return $result;
+            } else {
+                return null;
+            }
         }
     }
 
@@ -221,7 +238,7 @@ class MapView extends Widget {
                             Yii::$app->cache->set($errorCacheKey, ['error_message' => 'Result empty']);
                         }
                         return null;
-                    
+
                     default:
                         Yii::$app->cache->set($errorCacheKey, ['error_message' => 'Provider not supported']);
                         return null;
@@ -239,4 +256,5 @@ class MapView extends Widget {
         }
 
     }
+
 }
