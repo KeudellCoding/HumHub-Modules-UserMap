@@ -22,6 +22,7 @@ class EditForm extends Model {
     public $osm_map_center_zoom;
     public $geocoding_provider;
     public $geocoding_api_key;
+    public $geocoding_use_street;
 
     /**
      * @inheritdocs
@@ -34,6 +35,7 @@ class EditForm extends Model {
             ['osm_map_center_longitude', 'double', 'min' => -180, 'max' => 180],
             [['geocoding_provider'], 'in', 'range' => array_keys(static::getProviders())],
             [['geocoding_api_key', 'map_widget_location_sort_order'], 'required'],
+            ['geocoding_use_street', 'boolean'],
         ];
     }
 
@@ -58,6 +60,7 @@ class EditForm extends Model {
         $this->osm_map_center_zoom = $settings->get('osm_map_center_zoom', 5);
         $this->geocoding_provider = $settings->get('geocoding_provider');
         $this->geocoding_api_key = $settings->get('geocoding_api_key');
+        $this->geocoding_use_street = $settings->get('geocoding_use_street');
     }
 
     /**
@@ -73,6 +76,7 @@ class EditForm extends Model {
         $settings->set('osm_map_center_zoom', $this->osm_map_center_zoom);
         $settings->set('geocoding_provider', $this->geocoding_provider);
         $settings->set('geocoding_api_key', $this->geocoding_api_key);
+        $settings->set('geocoding_use_street', $this->geocoding_use_street);
 
         return true;
     }

@@ -41,6 +41,7 @@ use humhub\modules\usermap\models\admin\EditForm;
 
         <?= $form->field($model, 'geocoding_provider')->dropDownList(EditForm::getProviders()); ?>
         <?= $form->field($model, 'geocoding_api_key'); ?>
+        <?= $form->field($model, 'geocoding_use_street') ->checkBox(['use_street' => 'use_street']) ?>
 
         <hr />
 
@@ -52,7 +53,7 @@ use humhub\modules\usermap\models\admin\EditForm;
         <?= Html::submitButton("Save", ['class' => 'btn btn-primary', 'data-ui-loader' => '']); ?>
         <a class="btn btn-default" href="<?= Url::to(['/admin/module']); ?>">Back to modules</a>
         <a>This module is now available in the Marketplace.</a>
-        
+
         <hr />
 
         <span>
