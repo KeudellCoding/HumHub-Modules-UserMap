@@ -105,33 +105,28 @@ class MapView extends Widget {
             return call_user_func($module->getFormatedAddressCallback, $user);
         }
 
+        if (empty($user->profile->zip) || empty($user->profile->city)) {
+            return null;
+        }
+
+
+        $result = "";
+
+        // Add street
         $geocoding_use_street = $settings->get('geocoding_use_street', true);
-        if ($geocoding_use_street === true)  {
-            if (!empty($user->profile->street) && !empty($user->profile->zip) && !empty($user->profile->city)) {
-                $result = $user->profile->street . ', ' . $user->profile->zip . ' ' . $user->profile->city;
-
-                if (!empty($user->profile->country)) {
-                    $result .= ', ' . $user->profile->country;
-                }
-
-                return $result;
-            } else {
-                return null;
-            }
+        if ($geocoding_use_street == true && !empty($user->profile->street))  {
+            $result .= $user->profile->street . ', ';
         }
-        else {
-            if (!empty($user->profile->zip) && !empty($user->profile->city)) {
-                $result = $user->profile->zip . ' ' . $user->profile->city;
 
-                if (!empty($user->profile->country)) {
-                    $result .= ', ' . $user->profile->country;
-                }
+        // Add zip and city
+        $result .= $user->profile->zip . ' ' . $user->profile->city;
 
-                return $result;
-            } else {
-                return null;
-            }
+        // Add country
+        if (!empty($user->profile->country)) {
+            $result .= ', ' . $user->profile->country;
         }
+
+        return $result;
     }
 
     private function getCoordinates(User $user) {
