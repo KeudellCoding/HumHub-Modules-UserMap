@@ -104,8 +104,9 @@ class MapView extends Widget {
         if ($module->getFormatedAddressCallback !== null) {
             return call_user_func($module->getFormatedAddressCallback, $user);
         }
-        $geocoding_use_street = $settings->get('geocoding_use_street');
-        if ($geocoding_use_street == true)  {
+
+        $geocoding_use_street = $settings->get('geocoding_use_street', true);
+        if ($geocoding_use_street === true)  {
             if (!empty($user->profile->street) && !empty($user->profile->zip) && !empty($user->profile->city)) {
                 $result = $user->profile->street . ', ' . $user->profile->zip . ' ' . $user->profile->city;
 
@@ -117,7 +118,8 @@ class MapView extends Widget {
             } else {
                 return null;
             }
-        } else {
+        }
+        else {
             if (!empty($user->profile->zip) && !empty($user->profile->city)) {
                 $result = $user->profile->zip . ' ' . $user->profile->city;
 

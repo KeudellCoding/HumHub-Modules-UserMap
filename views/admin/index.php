@@ -41,7 +41,7 @@ use humhub\modules\usermap\models\admin\EditForm;
 
         <?= $form->field($model, 'geocoding_provider')->dropDownList(EditForm::getProviders()); ?>
         <?= $form->field($model, 'geocoding_api_key'); ?>
-        <?= $form->field($model, 'geocoding_use_street') ->checkBox(['use_street' => 'use_street']) ?>
+        <?= $form->field($model, 'geocoding_use_street')->checkBox(['use_street' => 'use_street']) ?>
 
         <hr />
 

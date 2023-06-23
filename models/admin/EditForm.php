@@ -60,7 +60,7 @@ class EditForm extends Model {
         $this->osm_map_center_zoom = $settings->get('osm_map_center_zoom', 5);
         $this->geocoding_provider = $settings->get('geocoding_provider');
         $this->geocoding_api_key = $settings->get('geocoding_api_key');
-        $this->geocoding_use_street = $settings->get('geocoding_use_street');
+        $this->geocoding_use_street = $settings->get('geocoding_use_street', true);
     }
 
     /**
@@ -76,7 +76,7 @@ class EditForm extends Model {
         $settings->set('osm_map_center_zoom', $this->osm_map_center_zoom);
         $settings->set('geocoding_provider', $this->geocoding_provider);
         $settings->set('geocoding_api_key', $this->geocoding_api_key);
-        $settings->set('geocoding_use_street', $this->geocoding_use_street);
+        $settings->set('geocoding_use_street', (boolean) $this->geocoding_use_street);
 
         return true;
     }
@@ -88,7 +88,8 @@ class EditForm extends Model {
         return [
             'osm_map_center_latitude' => 'Default Latitude',
             'osm_map_center_longitude' => 'Default Longitude',
-            'osm_map_center_zoom' => 'Default Zoom Level'
+            'osm_map_center_zoom' => 'Default Zoom Level',
+            'geocoding_use_street' => 'Use streets in geocoding'
         ];
     }
 
