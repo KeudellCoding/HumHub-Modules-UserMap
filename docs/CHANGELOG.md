@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.2.5 (June 23, 2023)
+----------------------
+- Fix (security): Access as a guest was possible if guest access was activated.
+
 1.2.4 (May 14, 2022)
 ----------------------
 - Fix #8: Getting unknown property: humhub\modules\usermap\Module

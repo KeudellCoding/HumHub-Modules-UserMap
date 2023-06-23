@@ -10,9 +10,14 @@ namespace humhub\modules\usermap\controllers;
 
 use Yii;
 use humhub\components\Controller;
+use yii\web\ForbiddenHttpException;
 
 class MapController extends Controller {
     public function actionIndex() {
+        if (Yii::$app->user->isGuest) {
+            throw new ForbiddenHttpException('You\'re not allowed to enter this page.');
+        }
+
         $settings = Yii::$app->getModule('usermap')->settings;
 
         return $this->render('index', [

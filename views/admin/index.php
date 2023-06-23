@@ -8,7 +8,7 @@
 
 use yii\helpers\Html;
 use yii\helpers\Url;
-use humhub\widgets\ActiveForm;
+use humhub\modules\ui\form\widgets\ActiveForm;
 use humhub\modules\usermap\models\admin\EditForm;
 
 ?>
