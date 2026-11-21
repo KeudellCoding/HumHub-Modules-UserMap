@@ -1,4 +1,5 @@
 <?php
+
 /**
  * User Location Map
  *
@@ -6,66 +7,78 @@
  * @author KeudellCoding
  */
 
-use yii\helpers\Html;
-use yii\helpers\Url;
-use humhub\modules\ui\form\widgets\ActiveForm;
+use humhub\helpers\Html;
 use humhub\modules\usermap\models\admin\EditForm;
+use humhub\widgets\bootstrap\Button;
+use humhub\widgets\form\ActiveForm;
+use yii\helpers\Json;
 
+/** @var humhub\components\View $this */
+/** @var EditForm $model */
+/** @var array|false $last_error */
+
+$homepageUrl = Yii::$app->getModule('usermap')->getHomepageUrl();
 ?>
 
 <div class="panel panel-default">
-    <div class="panel-heading">User Location Map configuration</div>
+    <div class="panel-heading"><?= Html::encode(Yii::t('UsermapModule.base', 'User Location Map configuration')) ?></div>
     <div class="panel-body">
         <?php $form = ActiveForm::begin(); ?>
 
-        <?= $form->field($model, 'map_widget_location')->dropDownList(EditForm::getWidgetLocations()); ?>
-        <?= $form->field($model, 'map_widget_location_sort_order')->input('number', ['min' => 0]); ?>
+        <?= $form->errorSummary($model) ?>
+        <?= $form->field($model, 'map_widget_location')->dropDownList(EditForm::getWidgetLocations()) ?>
+        <?= $form->field($model, 'map_widget_location_sort_order')->input('number', ['min' => 0, 'step' => 1]) ?>
 
-        <hr />
+        <hr>
 
-        <?= $form->field($model, 'osm_tile_server'); ?>
+        <?= $form->field($model, 'osm_tile_server')->textInput() ?>
 
         <div class="row">
             <div class="col-md-4">
-                <?= $form->field($model, 'osm_map_center_latitude'); ?>
+                <?= $form->field($model, 'osm_map_center_latitude')->input('number', ['min' => -90, 'max' => 90, 'step' => 'any']) ?>
             </div>
             <div class="col-md-4">
-                <?= $form->field($model, 'osm_map_center_longitude'); ?>
+                <?= $form->field($model, 'osm_map_center_longitude')->input('number', ['min' => -180, 'max' => 180, 'step' => 'any']) ?>
             </div>
             <div class="col-md-4">
-                <?= $form->field($model, 'osm_map_center_zoom'); ?>
+                <?= $form->field($model, 'osm_map_center_zoom')->input('number', ['min' => 0, 'max' => 19, 'step' => 1]) ?>
             </div>
         </div>
 
-        <hr />
+        <hr>
 
-        <?= $form->field($model, 'geocoding_provider')->dropDownList(EditForm::getProviders()); ?>
-        <?= $form->field($model, 'geocoding_api_key'); ?>
-        <?= $form->field($model, 'geocoding_use_street')->checkBox(['use_street' => 'use_street']) ?>
+        <?= $form->field($model, 'geocoding_provider')->dropDownList(EditForm::getProviders(), ['disabled' => $model->isProviderFixed()]) ?>
+        <?= $form->field($model, 'geocoding_api_key')->passwordInput([
+            'value' => '',
+            'placeholder' => $model->hasSavedApiKey() ? '********' : null,
+            'autocomplete' => 'new-password',
+            'disabled' => $model->isProviderFixed() && $model->isApiKeyFixed(),
+        ]) ?>
+        <?= $form->field($model, 'geocoding_use_street')->checkbox() ?>
 
-        <hr />
+        <hr>
 
-        <label class="control-label">Last cached failed request</label>
-        <pre><?= $last_error === false ? 'No failed request in the cache.' : var_dump($last_error); ?></pre>
+        <p class="fw-semibold"><?= Html::encode(Yii::t('UsermapModule.base', 'Last failed geocoding request')) ?></p>
+        <pre><?= Html::encode($last_error === false
+            ? Yii::t('UsermapModule.base', 'No failed request in the cache.')
+            : Json::encode($last_error, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?></pre>
 
-        <hr />
+        <hr>
 
-        <?= Html::submitButton("Save", ['class' => 'btn btn-primary', 'data-ui-loader' => '']); ?>
-        <a class="btn btn-default" href="<?= Url::to(['/admin/module']); ?>">Back to modules</a>
-        <a>This module is now available in the Marketplace.</a>
-
-        <hr />
-
-        <span>
-            Additional modifications can be made. HumHub offers the possibility to edit properties and methods of modules.
-            Details can be found <a href="https://docs.humhub.org/docs/admin/advanced-configuration/#module-configurations" target="_blank" rel="noopener noreferrer">here</a>.<br />
-            Details on the possible configurations can be found in the Module.php file.
-        </span>
-
-        <hr />
-
-        <span>If you like this plugin, I would be very happy about a <a href="https://ko-fi.com/KeudellCoding" target="_blank" rel="noopener noreferrer">Ko-fi</a> :)</span>
+        <?= Button::save()->submit() ?>
+        <?= Html::a(Html::encode(Yii::t('UsermapModule.base', 'Back to modules')), ['/admin/module'], ['class' => 'btn btn-secondary']) ?>
 
         <?php ActiveForm::end(); ?>
+
+        <?php if ($homepageUrl): ?>
+            <hr />
+
+            <span><?= Yii::t('UsermapModule.base', 'Found a bug or have a feature request? Support the development on {github} :)', [
+                'github' => Html::a('GitHub', $homepageUrl, [
+                    'target' => '_blank',
+                    'rel' => 'noopener noreferrer',
+                ]),
+            ]) ?></span>
+        <?php endif; ?>
     </div>
 </div>

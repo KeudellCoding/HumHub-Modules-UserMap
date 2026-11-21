@@ -1,4 +1,5 @@
 <?php
+
 /**
  * User Location Map
  *
@@ -8,74 +9,59 @@
 
 namespace humhub\modules\usermap;
 
+use humhub\modules\ui\menu\MenuLink;
+use humhub\modules\usermap\jobs\GeocodeAddress;
+use humhub\modules\usermap\widgets\MapView;
 use Yii;
 use yii\helpers\Url;
-use humhub\modules\usermap\widgets\MapView;
+use yii\queue\ExecEvent;
 
-class Events {
-    public static function onTopMenuInit($event) {
-        try {
-            $settings = Yii::$app->getModule('usermap')->settings;
-            if ($settings->get('map_widget_location') !== 'top_menu') {
-                return;
-            }
+class Events
+{
+    public static function onTopMenuInit($event): void
+    {
+        $module = Yii::$app->getModule('usermap');
+        if (Yii::$app->user->isGuest || $module->getMapWidgetLocation() !== 'top_menu') {
+            return;
+        }
 
-            $currentIdentity = Yii::$app->user->identity;
-            if ($currentIdentity === null || Yii::$app->user->isGuest) {
-                return;
-            }
-            
-            $event->sender->addItem([
-                'label' => 'Usermap',
-                'url' => Url::to(['/usermap/map']),
-                'htmlOptions' => [],
-                'icon' => '<i class="fa fa-map-marker"></i>',
-                'isActive' => (Yii::$app->controller->module
-                    && Yii::$app->controller->module->id === 'usermap'
-                    && Yii::$app->controller->id === 'map'),
-                'sortOrder' => $settings->get('map_widget_location_sort_order', 400),
-            ]);
-        } catch (\Throwable $e) {
-            Yii::error($e);
+        $controller = Yii::$app->controller;
+        $event->sender->addEntry(new MenuLink([
+            'label' => Yii::t('UsermapModule.base', 'Usermap'),
+            'url' => ['/usermap/map'],
+            'icon' => 'map-marker',
+            'isActive' => $controller && $controller->module->id === 'usermap' && $controller->id === 'map',
+            'sortOrder' => (int) $module->settings->get('map_widget_location_sort_order', 400),
+        ]));
+    }
+
+    public static function onDashboardSidebarInit($event): void
+    {
+        $module = Yii::$app->getModule('usermap');
+        if (Yii::$app->user->isGuest || $module->getMapWidgetLocation() !== 'dashboard_sidebar') {
+            return;
+        }
+
+        $event->sender->addWidget(MapView::class, [
+            'id' => 'usermap-dashboard-map',
+            'height' => '20em',
+            'showAsPanel' => true,
+            'link' => Url::to(['/usermap/map']),
+        ], ['sortOrder' => (int) $module->settings->get('map_widget_location_sort_order', 400)]);
+    }
+
+    public static function onAfterUpdate($event): void
+    {
+        if ($event->moduleId === 'usermap') {
+            $module = Yii::$app->getModule('usermap');
+            $module->settings->set('map_widget_location', $module->getMapWidgetLocation());
         }
     }
 
-    public static function onDashboardSidebarInit($event) {
-        try {
-            $settings = Yii::$app->getModule('usermap')->settings;
-            if ($settings->get('map_widget_location') !== 'dashboard_sidebar') {
-                return;
-            }
-
-            $currentIdentity = Yii::$app->user->identity;
-            if ($currentIdentity === null || Yii::$app->user->isGuest) {
-                return;
-            }
-            
-            $event->sender->addWidget(
-                MapView::class,
-                [
-                    'height' => '20em',
-                    'showAsPanel' => true,
-                    'link' => Url::to(['/usermap/map'])
-                ],
-                ['sortOrder' => $settings->get('map_widget_location_sort_order', 400)]
-            );
-        } catch (\Throwable $e) {
-            Yii::error($e);
-        }
-    }
-
-    public static function onAfterUpdate($event) {
-        if ($event->moduleId === 'usermap'){
-            try {
-                $settings = Yii::$app->getModule('usermap')->settings;
-                if ($settings->get('map_widget_location') === 'directory_menu' && version_compare(Yii::$app->version, '1.9.0', 'ge')) {
-                    $settings->set('map_widget_location', 'top_menu');
-                }
-            } catch (\Throwable $e) {
-                Yii::error($e);
-            }
+    public static function onQueueAfterExec(ExecEvent $event): void
+    {
+        if ($event->job instanceof GeocodeAddress) {
+            $event->job->releaseReservation($event->id);
         }
     }
 }

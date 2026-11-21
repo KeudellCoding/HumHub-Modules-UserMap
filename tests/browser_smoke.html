@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>User Location Map popup test</title>
+    <link rel="stylesheet" href="../resources/leaflet/leaflet.css">
+    <link rel="stylesheet" href="../resources/usermap.css">
+</head>
+<body>
+    <pre id="result" data-status="failed">Popup test did not finish.</pre>
+    <div class="usermap-widget">
+        <div class="usermap-map" style="width: 960px; height: 420px;"></div>
+    </div>
+    <script src="../resources/leaflet/leaflet.js"></script>
+    <script src="../resources/leaflet.markercluster/leaflet.markercluster.js"></script>
+    <script>
+        let UserMap;
+        // Provide the HumHub widget factory for the standalone Leaflet fixture.
+        window.humhub = {
+            module(name, setup) {
+                setup(
+                    {export: (exports) => { UserMap = exports.UserMap; }},
+                    () => ({Widget: {extend: () => class {}}}),
+                    () => ({on() {}})
+                );
+            }
+        };
+    </script>
+    <script src="../resources/humhub.usermap.js"></script>
+    <script>
+        function assert(condition, message) {
+            if (!condition) {
+                throw new Error(message);
+            }
+        }
+
+        const result = document.getElementById('result');
+        const displayName = '<em title="Name">Jörg O\'Connor & Co.</em>';
+        const address = '10115 <em title="City">Berlin</em> & Umgebung';
+        const relativeProfile = '/humhub/user/profile?name=fixture&view=about';
+        const absoluteProfile = window.location.origin + '/user/profile/fixture';
+        const profiles = new Map([
+            [-125, {url: relativeProfile, href: window.location.origin + relativeProfile}],
+            [-75, {url: 'https://[', href: null}],
+            [-25, {url: absoluteProfile, href: absoluteProfile}],
+            [25, {url: 'https://outside.example.test/profile', href: null}],
+            [75, {url: 'mailto:fixture@example.test', href: null}],
+            [125, {url: '', href: null}]
+        ]);
+        const widget = new UserMap();
+        widget.$ = {find: (selector) => document.querySelectorAll(selector)};
+        widget.options = {mapOptions: {
+            tileServer: L.Util.emptyImageUrl,
+            center: [0, 0],
+            zoom: 2,
+            users: Array.from(profiles, ([longitude, {url}]) => ({
+                displayname: displayName,
+                formatedaddress: address,
+                profileurl: url,
+                coords: {latitude: 0, longitude}
+            }))
+        }};
+
+        async function testDeferredPreview() {
+            const canvas = document.querySelector('.usermap-map');
+            const link = document.createElement('a');
+            link.className = 'usermap-preview-link';
+            canvas.appendChild(link);
+            const preview = new UserMap();
+            preview.$ = widget.$;
+            const cached = {coords: {latitude: 1, longitude: 2}};
+            preview.options = {mapOptions: {
+                tileServer: null, center: [0, 0], zoom: 2, users: [cached],
+                lookupUrl: '/fixture/lookup', lookupTokens: ['first', 'second', 'third']
+            }};
+            const requests = [];
+            const replies = [];
+            let secondStarted;
+            const secondRequest = new Promise((resolve) => { secondStarted = resolve; });
+            const originalFetch = window.fetch;
+            window.yii = {getCsrfToken: () => 'fixture-csrf'};
+            window.fetch = (url, options) => {
+                requests.push({url, options});
+                if (requests.length === 2) {
+                    secondStarted();
+                }
+                return new Promise((resolve) => replies.push(resolve));
+            };
+            try {
+                preview.init();
+                assert(preview.markers.getLayers().length === 1, 'Cached markers must appear immediately.');
+                assert(requests.length === 1, 'Only one lookup may be in flight.');
+                const {url, options} = requests[0];
+                assert(url === '/fixture/lookup' && options.method === 'POST', 'Expected the HumHub lookup endpoint.');
+                assert(options.headers['X-CSRF-Token'] === 'fixture-csrf' && options.body.get('token') === 'first', 'Missing CSRF or lookup token.');
+                replies[0](new Response(JSON.stringify({users: [{coords: {latitude: 10, longitude: 20}}]})));
+                await Promise.race([
+                    secondRequest,
+                    new Promise((resolve, reject) => setTimeout(() => reject(new Error('Second lookup did not start.')), 2000))
+                ]);
+                assert(preview.markers.getLayers().length === 2, 'Deferred marker must appear without a refresh.');
+                assert(preview.markers.getLayers().every((marker) => !marker.getPopup()), 'Preview markers must omit popups.');
+                preview.destroy();
+                assert(requests[1].options.signal.aborted, 'Removing the map must cancel its requests.');
+                replies[1](new Response(JSON.stringify({users: [cached]})));
+                await new Promise((resolve) => setTimeout(resolve, 0));
+                assert(requests.length === 2 && preview.markers.getLayers().length === 2, 'Removed maps must stop loading markers.');
+            } finally {
+                preview.destroy();
+                window.fetch = originalFetch;
+                delete window.yii;
+                link.remove();
+            }
+        }
+
+        async function testQueueUpdates() {
+            const status = document.createElement('p');
+            status.className = 'usermap-pending';
+            document.querySelector('.usermap-widget').appendChild(status);
+            const map = new UserMap();
+            map.$ = widget.$;
+            map.options = {mapOptions: {center: [0, 0], zoom: 2, updatesToken: 'first', updatesUrl: '/updates'}};
+            const originalFetch = window.fetch;
+            const originalTimeout = window.setTimeout;
+            const timers = [];
+            const tokens = [];
+            window.setTimeout = (fn, delay, ...args) => {
+                if (delay === 5000) {
+                    timers.push(fn);
+                    return 0;
+                }
+                return originalTimeout(fn, delay, ...args);
+            };
+            window.yii = {getCsrfToken: () => 'fixture'};
+            window.fetch = async (url, options) => {
+                tokens.push(options.body.get('token'));
+                return new Response(JSON.stringify({
+                    users: [{coords: {latitude: 1, longitude: tokens.length}}],
+                    next: tokens.length === 1 ? 'second' : null
+                }));
+            };
+            try {
+                map.init();
+                await timers.shift()();
+                assert(status.isConnected && map.markers.getLayers().length === 1, 'First update must keep the pending notice.');
+                await timers.shift()();
+                assert(tokens.join() === 'first,second' && map.markers.getLayers().length === 2, 'Expected two incremental updates.');
+                assert(!status.isConnected && timers.length === 0, 'Completed polling must remove the notice and stop.');
+            } finally {
+                map.destroy();
+                status.remove();
+                window.fetch = originalFetch;
+                window.setTimeout = originalTimeout;
+                delete window.yii;
+            }
+        }
+
+        async function run() {
+          try {
+            widget.init();
+            const markers = widget.markers.getLayers();
+            assert(markers.length === profiles.size, 'Expected a marker for every fixture.');
+
+            for (const marker of markers) {
+                const profile = profiles.get(marker.getLatLng().lng);
+                marker.openPopup();
+                const content = marker.getPopup().getElement().querySelector('.leaflet-popup-content');
+                assert(content.querySelector('strong')?.textContent === displayName, 'The name must be literal text.');
+                assert(content.textContent.includes(address), 'The address must be literal text.');
+                assert(content.querySelector('em') === null, 'Profile values must stay text nodes.');
+                assert((content.querySelector('a')?.href ?? null) === profile.href, 'Unexpected profile link for ' + profile.url);
+                marker.closePopup();
+            }
+
+            widget.destroy();
+            await testDeferredPreview();
+            await testQueueUpdates();
+            result.dataset.status = 'passed';
+            result.textContent = 'Popup, deferred preview and queue update tests passed.';
+          } catch (error) {
+            result.textContent = error.message;
+            throw error;
+          } finally {
+            widget.destroy();
+          }
+        }
+        run();
+    </script>
+</body>
+</html>

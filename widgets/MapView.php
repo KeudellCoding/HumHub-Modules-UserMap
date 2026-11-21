@@ -1,4 +1,5 @@
 <?php
+
 /**
  * User Location Map
  *
@@ -8,250 +9,144 @@
 
 namespace humhub\modules\usermap\widgets;
 
+use humhub\components\Widget;
+use humhub\modules\queue\driver\Instant;
+use humhub\modules\user\models\User;
+use humhub\modules\usermap\components\Geocoder;
+use humhub\modules\usermap\components\MapMembers;
+use humhub\modules\usermap\jobs\GeocodeAddress;
+use humhub\modules\usermap\models\admin\EditForm;
 use Yii;
 use yii\helpers\Url;
-use humhub\components\Widget;
-use humhub\modules\user\models\User;
-use humhub\modules\usermap\models\admin\EditForm;
+use yii\queue\sync\Queue as SyncQueue;
 
-class MapView extends Widget {
+class MapView extends Widget
+{
+    /** @var string Map height as a CSS value. The dashboard supplies its own preview height. */
+    public $height = '75vh';
 
-    /**
-     * Height of the Widget (css Values)
-     *
-     * @var string
-     */
-    public $height = "20em";
-
-    /**
-     * Show map as panel
-     *
-     * @var bool
-     */
+    /** @var bool Show the map in a dashboard panel. */
     public $showAsPanel = false;
 
-    /**
-     * Link that is navigated to when the map is clicked.
-     *
-     * @var string
-     */
-    public $link = null;
+    /** @var string|null Destination for the dashboard preview. */
+    public $link;
 
+    public function run()
+    {
+        $viewer = Yii::$app->user->getIdentity();
+        if (!$viewer instanceof User) {
+            return '';
+        }
 
-    public function run() {
-        $settings = Yii::$app->getModule('usermap')->settings;
-
-        return $this->render(
-            'mapView',
-            [
-                'height' => $this->height,
-                'user_data' => $this->getAllUsers(),
-                'link' => $this->link,
-                'showAsPanel' => $this->showAsPanel,
-                'osmTileServer' => $settings->get('osm_tile_server', EditForm::DEFAULT_TILE_SERVER),
-                'mapCenter' => [
-                    'latitude' => $settings->get('osm_map_center_latitude', 51.0951),
-                    'longitude' => $settings->get('osm_map_center_longitude', 10.2714),
-                    'zoom' => $settings->get('osm_map_center_zoom', 5)
-                ]
-            ]
-        );
-    }
-
-    private function getAllUsers() {
-        /** @var Module $module */
         $module = Yii::$app->getModule('usermap');
+        $settings = $module->settings;
+        $center = Geocoder::normalizeCoordinates([
+            'latitude' => $settings->get('osm_map_center_latitude', 51.0951),
+            'longitude' => $settings->get('osm_map_center_longitude', 10.2714),
+        ]) ?? ['latitude' => 51.0951, 'longitude' => 10.2714];
+        $zoom = filter_var($settings->get('osm_map_center_zoom', 5), FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 0, 'max_range' => 19],
+        ]);
+        ['provider' => $provider, 'apiKey' => $apiKey] = $module->getGeocodingConfiguration();
+        $tileServer = EditForm::normalizeTileServer($settings->get('osm_tile_server'));
+        [$users, $missing] = $this->getMarkers($viewer, $provider, $apiKey);
+        [$hasQueuedLookups, $lookupOptions] = $this->prepareLookups($viewer, $provider, $missing);
 
-        $formatedUsers = [];
-        foreach (User::findAll(['status' => User::STATUS_ENABLED]) as $user) {
-            if ($module->showOnMapCallback !== null) {
-                try {
-                    if (call_user_func($module->showOnMapCallback, $user) !== true) {
-                        continue;
-                    }
-                } catch (\Throwable $e) {
-                    \Yii::error($e);
-                }
-            }
-
-            $formatedAddress = $this->getFormatedAddress($user);
-
-            $formatedUsers[] = [
-                'id' => $user->id,
-                'guid' => $user->guid,
-                'username' => $user->username,
-                'displayname' => $user->displayname,
-                'firstname' => $user->profile->firstname,
-                'lastname' => $user->profile->lastname,
-                'street' => $user->profile->street,
-                'zip' => $user->profile->zip,
-                'city' => $user->profile->city,
-                'country' => $user->profile->country,
-                'profileurl' => Url::to(['/user/profile', 'cguid' => $user->guid]),
-                'formatedaddress' => $formatedAddress,
-                'coords' => $this->getCoordinates($user)
-            ];
-        }
-        return $formatedUsers;
+        return $this->render('mapView', [
+            'id' => $this->getId(),
+            'height' => $this->height,
+            'link' => $this->link,
+            'showAsPanel' => $this->showAsPanel,
+            'hasQueuedLookups' => $hasQueuedLookups,
+            'mapOptions' => [
+                'tileServer' => EditForm::tileServerError($tileServer) === null ? $tileServer : null,
+                'geocodingAttribution' => $module->getCoordinatesCallback === null
+                    ? Geocoder::getAttribution($provider)
+                    : null,
+                'center' => [$center['latitude'], $center['longitude']],
+                'zoom' => $zoom === false ? 5 : $zoom,
+                'users' => $users,
+            ] + $lookupOptions,
+        ]);
     }
 
-
-    private function getFormatedAddress(User $user) {
-        /** @var Module $module */
+    private function getMarkers(User $viewer, string $provider, string $apiKey): array
+    {
         $module = Yii::$app->getModule('usermap');
-        $settings = Yii::$app->getModule('usermap')->settings;
-
-        if ($module->getFormatedAddressCallback !== null) {
-            return call_user_func($module->getFormatedAddressCallback, $user);
+        if ($module->getCoordinatesCallback === null && $provider !== 'photon' && $apiKey === '') {
+            return [[], []];
         }
 
-        if (empty($user->profile->zip) || empty($user->profile->city)) {
-            return null;
+        $geocoder = Yii::createObject(Geocoder::class);
+        $members = new MapMembers();
+        $users = [];
+        $missing = [];
+        foreach ($members->addresses($viewer) as [$user, $address]) {
+            try {
+                $coordinates = $module->getCoordinatesCallback !== null
+                    ? Geocoder::normalizeCoordinates(call_user_func($module->getCoordinatesCallback, $user))
+                    : $geocoder->getCached($address ?? '', $provider, $apiKey);
+                if ($coordinates === false) {
+                    $lookupId = Geocoder::lookupId($address, $provider, $apiKey);
+                    $missing[$lookupId][] = (int) $user->id;
+                } elseif ($coordinates !== null) {
+                    $users[] = MapMembers::marker($user, $address, $coordinates, (bool) $this->link);
+                }
+            } catch (\Throwable $error) {
+                Yii::error('Could not prepare user #' . $user->id . ' for the map (' . get_class($error) . ').', 'usermap');
+            }
         }
 
-
-        $result = "";
-
-        // Add street
-        $geocoding_use_street = $settings->get('geocoding_use_street', true);
-        if ($geocoding_use_street == true && !empty($user->profile->street))  {
-            $result .= $user->profile->street . ', ';
-        }
-
-        // Add zip and city
-        $result .= $user->profile->zip . ' ' . $user->profile->city;
-
-        // Add country
-        if (!empty($user->profile->country)) {
-            $result .= ', ' . $user->profile->country;
-        }
-
-        return $result;
+        return [$users, $missing];
     }
 
-    private function getCoordinates(User $user) {
-        /** @var Module $module */
-        $module = Yii::$app->getModule('usermap');
-        if ($module->getCoordinatesCallback !== null) {
-            return call_user_func($module->getCoordinatesCallback, $user);
+    private function prepareLookups(User $viewer, string $provider, array $missing): array
+    {
+        if ($missing === []) {
+            return [false, []];
         }
-
-        $formatedAddress = $this->getFormatedAddress($user);
-        if (empty($formatedAddress)) {
-            return null;
+        $queue = Yii::$app->queue;
+        // Resolve HERE cache misses for the open map so it can use the coordinates
+        // even if the response headers prevent Geocoder from caching them.
+        if ($provider === 'here' || $queue instanceof SyncQueue || $queue instanceof Instant) {
+            return [false, $this->deferredOptions($viewer, $missing)];
         }
-
-        $cacheKey = 'usermap.cache.'.base64_encode($formatedAddress);
-        $errorCacheKey = 'usermap.error.cache.lasterrors';
-
-        try {
-            $coords = Yii::$app->cache->get($cacheKey);
-            if ($coords === false) {
-                $coords = null;
-
-                $settings = Yii::$app->getModule('usermap')->settings;
-
-                $apiProvider = $settings->get('geocoding_provider');
-                if (empty($apiProvider)) {
-                    Yii::$app->cache->set($errorCacheKey, ['error_message' => 'No provider given']);
-                    return null;
-                }
-
-                $apiKey = $settings->get('geocoding_api_key');
-                if (empty($apiKey)) {
-                    Yii::$app->cache->set($errorCacheKey, ['error_message' => 'API key empty']);
-                    return null;
-                }
-
-                switch ($apiProvider) {
-                    case 'google':
-                        $rawGeocodingResponse = file_get_contents('https://maps.googleapis.com/maps/api/geocode/json?address='.urlencode($formatedAddress).'&key='.$apiKey);
-                        if (!empty($rawGeocodingResponse)) {
-                            $geocodingResponse = json_decode($rawGeocodingResponse, true);
-                            if ($geocodingResponse['status'] === 'OK') {
-                                if (count($geocodingResponse['results']) >= 1) {
-                                    $coords = [
-                                        'latitude' => $geocodingResponse['results'][0]['geometry']['location']['lat'],
-                                        'longitude' => $geocodingResponse['results'][0]['geometry']['location']['lng']
-                                    ];
-
-                                    Yii::$app->cache->set($cacheKey, $coords, 0);
-                                }
-                                return $coords;
-                            }
-                            else {
-                                Yii::$app->cache->set($errorCacheKey, $geocodingResponse);
-                            }
-                        }
-                        else {
-                            Yii::$app->cache->set($errorCacheKey, ['error_message' => 'Result empty']);
-                        }
-                        return null;
-
-                    case 'mapbox':
-                        $rawGeocodingResponse = file_get_contents('https://api.mapbox.com/geocoding/v5/mapbox.places/'.rawurlencode($formatedAddress).'.json?access_token='.$apiKey.'&autocomplete=false&limit=1');
-                        if (!empty($rawGeocodingResponse)) {
-                            $geocodingResponse = json_decode($rawGeocodingResponse, true);
-                            if (isset($geocodingResponse['features'])) {
-                                if (count($geocodingResponse['features']) >= 1) {
-                                    $coords = [
-                                        'latitude' => $geocodingResponse['features'][0]['center'][1],
-                                        'longitude' => $geocodingResponse['features'][0]['center'][0]
-                                    ];
-
-                                    Yii::$app->cache->set($cacheKey, $coords, 0);
-                                }
-                                return $coords;
-                            }
-                            else {
-                                Yii::$app->cache->set($errorCacheKey, $geocodingResponse);
-                            }
-                        }
-                        else {
-                            Yii::$app->cache->set($errorCacheKey, ['error_message' => 'Result empty']);
-                        }
-                        return null;
-
-                    case 'here':
-                        $rawGeocodingResponse = file_get_contents('https://geocoder.ls.hereapi.com/6.2/geocode.json?searchtext='.urlencode($formatedAddress).'&apiKey='.$apiKey.'&maxresults=1');
-                        if (!empty($rawGeocodingResponse)) {
-                            $geocodingResponse = json_decode($rawGeocodingResponse, true);
-                            if (isset($geocodingResponse['Response']) && isset($geocodingResponse['Response']['View'])) {
-                                if (count($geocodingResponse['Response']['View']) >= 1) {
-                                    $coords = [
-                                        'latitude' => $geocodingResponse['Response']['View'][0]['Result'][0]['Location']['DisplayPosition']['Latitude'],
-                                        'longitude' => $geocodingResponse['Response']['View'][0]['Result'][0]['Location']['DisplayPosition']['Longitude']
-                                    ];
-
-                                    Yii::$app->cache->set($cacheKey, $coords, 0);
-                                }
-                                return $coords;
-                            }
-                            else {
-                                Yii::$app->cache->set($errorCacheKey, $geocodingResponse);
-                            }
-                        }
-                        else {
-                            Yii::$app->cache->set($errorCacheKey, ['error_message' => 'Result empty']);
-                        }
-                        return null;
-
-                    default:
-                        Yii::$app->cache->set($errorCacheKey, ['error_message' => 'Provider not supported']);
-                        return null;
-                }
+        $queued = [];
+        foreach ($missing as $lookupId => $memberIds) {
+            try {
+                (new GeocodeAddress([
+                    'lookupId' => $lookupId,
+                    'viewerId' => (int) $viewer->id,
+                    'memberId' => $memberIds[0],
+                    'language' => Yii::$app->language,
+                ]))->enqueue();
+                $queued[$lookupId] = $memberIds;
+            } catch (\Throwable $error) {
+                Yii::error('Could not queue a map lookup (' . get_class($error) . ').', 'usermap');
+                break;
             }
-            else {
-                return $coords;
-            }
-        } catch (\Throwable $th) {
-            Yii::$app->cache->set($errorCacheKey, ['error_message' => $th->getMessage()]);
-            return null;
-        } catch (\Exception $th) {
-            Yii::$app->cache->set($errorCacheKey, ['error_message' => $th->getMessage()]);
-            return null;
         }
-
+        $token = $queued ? MapMembers::watch($viewer, $queued, (bool) $this->link) : null;
+        return [$token !== null, $token === null ? [] : [
+            'updatesUrl' => Url::to(['/usermap/map/updates']),
+            'updatesToken' => $token,
+        ]];
     }
 
+    private function deferredOptions(User $viewer, array $missing): array
+    {
+        $tokens = [];
+        foreach ($missing as $lookupId => $memberIds) {
+            $token = Yii::$app->security->generateRandomString();
+            // Only opaque, viewer-bound tokens are exposed, including in the dashboard preview.
+            if (Yii::$app->cache->set(['usermap.deferred', (int) $viewer->id, $token], [
+                'lookupId' => $lookupId,
+                'memberIds' => $memberIds,
+                'preview' => (bool) $this->link,
+            ], 3600)) {
+                $tokens[] = $token;
+            }
+        }
+        return ['lookupUrl' => Url::to(['/usermap/map/lookup']), 'lookupTokens' => $tokens];
+    }
 }

@@ -1,0 +1,69 @@
+.usermap-map {
+    width: 100%;
+    position: relative;
+    isolation: isolate;
+    z-index: 0;
+}
+
+.usermap-preview-link {
+    position: absolute;
+    inset: 0;
+    /* Place the link above the map panes and below attribution controls. */
+    z-index: 800;
+}
+
+.usermap-preview-link:focus {
+    outline: 2px solid currentColor;
+    outline-offset: -3px;
+}
+
+.usermap-widget .leaflet-popup-content {
+    overflow-wrap: anywhere;
+}
+
+.usermap-widget {
+    position: relative;
+}
+
+.usermap-pending {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--bs-body-bg, white);
+    color: var(--bs-body-color, #333);
+    box-shadow: 0 1px 4px #0004;
+    cursor: help;
+}
+
+.usermap-status-text {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: max-content;
+    max-width: min(16rem, 65vw);
+    padding: .35rem .6rem;
+    border-radius: .25rem;
+    background: var(--bs-dark, #212529);
+    color: white;
+    font-size: .875rem;
+}
+
+.usermap-pending:not(:hover):not(:focus-within) .usermap-status-text {
+    clip-path: inset(50%);
+    pointer-events: none;
+}
+
+.usermap-update-error .spinner-border {
+    display: none;
+}
+
+.usermap-update-error::before {
+    content: "!";
+    font-weight: bold;
+}

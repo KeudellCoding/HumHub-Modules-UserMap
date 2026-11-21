@@ -1,2 +1,6 @@
+.htaccess
+nbproject
+.idea/*
+.gitmodules
 .DS_Store
 ._.DS_Store

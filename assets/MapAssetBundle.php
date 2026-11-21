@@ -1,4 +1,5 @@
 <?php
+
 /**
  * User Location Map
  *
@@ -8,28 +9,31 @@
 
 namespace humhub\modules\usermap\assets;
 
-use yii\web\AssetBundle;
+use humhub\assets\CoreApiAsset;
+use humhub\components\assets\AssetBundle;
+use yii\web\YiiAsset;
 
-class MapAssetBundle extends AssetBundle {
-    /**
-     * v1.5 compatibility defer script loading
-     *
-     * Migrate to HumHub AssetBundle once minVersion is >=1.5
-     *
-     * @var bool
-     */
-    public $defer = true;
-
+class MapAssetBundle extends AssetBundle
+{
     public $sourcePath = '@usermap/resources';
+
+    public $forceCopy = true;
 
     public $css = [
         'leaflet/leaflet.css',
         'leaflet.markercluster/MarkerCluster.css',
         'leaflet.markercluster/MarkerCluster.Default.css',
+        'usermap.css',
     ];
-    
+
     public $js = [
         'leaflet/leaflet.js',
-        'leaflet.markercluster/leaflet.markercluster.js'
+        'leaflet.markercluster/leaflet.markercluster.js',
+        'humhub.usermap.js',
+    ];
+
+    public $depends = [
+        YiiAsset::class,
+        CoreApiAsset::class,
     ];
 }

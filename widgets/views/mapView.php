@@ -1,4 +1,5 @@
 <?php
+
 /**
  * User Location Map
  *
@@ -6,74 +7,60 @@
  * @author KeudellCoding
  */
 
-use humhub\libs\Html;
-use humhub\widgets\PanelMenu;
-use humhub\assets\JqueryKnobAsset;
+use humhub\helpers\Html;
 use humhub\modules\usermap\assets\MapAssetBundle;
+use humhub\widgets\PanelMenu;
 
-JqueryKnobAsset::register($this);
+/** @var humhub\components\View $this */
+/** @var string $id */
+/** @var string $height */
+/** @var string|null $link */
+/** @var bool $showAsPanel */
+/** @var bool $hasQueuedLookups */
+/** @var array $mapOptions */
+
 MapAssetBundle::register($this);
+$previewLink = $link ? Html::a('', $link, [
+    'class' => 'usermap-preview-link',
+    'aria-label' => Yii::t('UsermapModule.base', 'Open map'),
+]) : '';
 ?>
 
-<?php if ($showAsPanel) { ?>
-    <div class="panel" id="usermap-map-view-snippet">
-        
+<?php if ($showAsPanel): ?>
+    <div class="panel" id="<?= Html::encode($id . '-panel') ?>">
         <div class="panel-heading">
-            <i class="fa fa-map-marker"></i> <span><strong>User</strong> Location Map</span>
-            <?= PanelMenu::widget(['id' => 'usermap-map-view-snippet']); ?>
+            <i class="fa fa-map-marker" aria-hidden="true"></i>
+            <?= Html::encode(Yii::t('UsermapModule.base', 'User Location Map')) ?>
+            <?= PanelMenu::widget(['collapseId' => $id . '-collapse']) ?>
         </div>
-        
-        <div class="panel-body" style="padding:0px;">
-<?php } ?>
-            
-            <div id="user-main-map-link" style="height: <?= $height ?>;">
-                <div id="user-main-map" style="height: 100%;"></div>
-            </div>
+        <div class="panel-body p-0 collapse" id="<?= Html::encode($id . '-collapse') ?>">
+<?php endif; ?>
 
-            <script <?= Html::nonce() ?>>
-                $(document).ready(function(){
-                    var map = L.map('user-main-map').setView([<?= $mapCenter['latitude'] ?>, <?= $mapCenter['longitude'] ?>], <?= $mapCenter['zoom'] ?>);
-                    var markers = L.markerClusterGroup();
-                
-                    L.tileLayer('<?= $osmTileServer ?>', {
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    }).addTo(map);
-                    
-                    var allUsers = <?=json_encode($user_data);?>;
-                    
-                    $.each(allUsers, function(i, user){
-                        if (user.coords && user.coords.latitude && user.coords.longitude) {
-                            var marker = L.marker([user.coords.latitude, user.coords.longitude]);
-                            marker.bindPopup('<a href="'+user.profileurl+'"><b>'+user.displayname+'</b></a><br/>'+user.formatedaddress+'<br/>');
-                            markers.addLayer(marker);
-                        }
-                    });
-                    
-                    map.addLayer(markers);
-                });
-            </script>
+<?= Html::beginTag('div', [
+    'id' => $id,
+    'class' => 'usermap-widget',
+    'data' => [
+        'ui-widget' => 'usermap.UserMap',
+        'ui-init' => true,
+        'map-options' => $mapOptions,
+    ],
+]) ?>
+    <?= Html::tag('div', $previewLink, [
+        'class' => 'usermap-map',
+        'style' => ['height' => $height],
+        'aria-label' => Yii::t('UsermapModule.base', 'User Location Map'),
+    ]) ?>
+<?php if ($hasQueuedLookups): ?>
+    <div class="usermap-pending" role="status" tabindex="0"
+       data-error="<?= Html::encode(Yii::t('UsermapModule.base', 'Map updates could not be loaded.')) ?>">
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span class="usermap-status-text"><?= Html::encode(Yii::t('UsermapModule.base', 'More locations are being looked up.')) ?></span>
+    </div>
+<?php endif; ?>
 
-            <?php if (!empty($link)) { ?>
-                <script <?= Html::nonce() ?>>
-                    $(document).ready(function(){
-                        $('#user-main-map-link').click(function(){
-                            window.location.href = "<?= $link ?>";
-                        });
-                    });
-                </script>
+<?= Html::endTag('div') ?>
 
-                <style>
-                    #user-main-map-link {
-                        cursor: pointer;
-                    }
-
-                    #user-main-map-link * {
-                        pointer-events: none;
-                    }
-                </style>
-            <?php } ?>
-
-<?php if ($showAsPanel) { ?>
+<?php if ($showAsPanel): ?>
         </div>
     </div>
-<?php } ?>            
+<?php endif; ?>

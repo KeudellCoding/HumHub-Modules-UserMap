@@ -1,4 +1,5 @@
 <?php
+
 /**
  * User Location Map
  *
@@ -8,9 +9,11 @@
 
 namespace humhub\modules\usermap;
 
+use humhub\modules\usermap\components\GeocodingSettings;
 use yii\helpers\Url;
 
-class Module extends \humhub\components\Module {
+class Module extends \humhub\components\Module
+{
     /**
      * @var callable a callback that returns true if the user is to be displayed on the map, false otherwise.
      * The only parameter is the user. The result is not cached.
@@ -35,9 +38,30 @@ class Module extends \humhub\components\Module {
     public $resourcesPath = 'resources';
 
     /**
+     * Keeps the former directory menu setting usable after upgrading.
+     */
+    public function getMapWidgetLocation(): string
+    {
+        $location = $this->settings->get('map_widget_location', 'top_menu');
+        return in_array($location, ['top_menu', 'dashboard_sidebar'], true) ? $location : 'top_menu';
+    }
+
+    /** @return array{provider: string, apiKey: string} */
+    public function getGeocodingConfiguration(): array
+    {
+        return (new GeocodingSettings($this->settings))->read();
+    }
+
+    /**
      * @inheritdoc
      */
-    public function getConfigUrl() {
+    public function getConfigUrl()
+    {
         return Url::to(['/usermap/admin/index']);
+    }
+
+    public function getHomepageUrl(): ?string
+    {
+        return $this->getModuleInfo()['homepage'] ?? null;
     }
 }
