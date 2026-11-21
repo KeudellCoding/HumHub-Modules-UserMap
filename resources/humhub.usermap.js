@@ -171,6 +171,8 @@ humhub.module('usermap', function (module, require, $) {
         if (options.tileServer) {
             L.tileLayer(options.tileServer, {
                 maxZoom: 19,
+                // OSM requires the referring site. Send only its origin for these tile images.
+                referrerPolicy: 'strict-origin',
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(this.map);
         }
